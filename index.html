@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BOXER | 프리미엄 랜덤박스 스토어</title>
+    <title>GACHU | 프리미엄 랜덤박스 스토어</title>
     <link rel="stylesheet" href="style.css">
     <!-- 파이어베이스 & 토스페이먼츠 SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -11,13 +11,75 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://js.tosspayments.com/v1/payment"></script>
 </head>
+
+<!-- ❤️ 찜 목록 모달 창 -->
+<div id="wishlistModal" class="modal">
+    <div class="modal-content">
+        <span onclick="closeModal('wishlistModal')" class="close">&times;</span>
+        <div class="modal-header"><h3>찜한 상품 목록</h3></div>
+        <div id="wishlistContainer" class="modal-list-container" style="max-height:200px; overflow-y:auto; margin-bottom:15px;"></div>
+        <button class="btn btn-black btn-full" onclick="closeModal('wishlistModal')">닫기</button>
+    </div>
+</div>
+
+<!-- 🛒 장바구니 목록 모달 창 -->
+<div id="cartModal" class="modal">
+    <div class="modal-content">
+        <span onclick="closeModal('cartModal')" class="close">&times;</span>
+        <div class="modal-header"><h3>장바구니 목록</h3></div>
+        <div id="cartContainer" class="modal-list-container" style="max-height:200px; overflow-y:auto; margin-bottom:15px;"></div>
+        <div class="total-price-wrap" style="margin-bottom:15px; font-weight:bold;">
+            총 결제 금액: <strong id="cartTotalPrice" style="color:#e74c3c;">0원</strong>
+        </div>
+        <button class="btn btn-black btn-full" onclick="checkoutCart()">장바구니 전체 결제하기</button>
+    </div>
+</div>
+
+<!-- 📢 공지사항 모달 창 -->
+<div id="noticeModal" class="modal">
+    <div class="modal-content" style="text-align:center; padding:30px;">
+        <span onclick="closeModal('noticeModal')" class="close">&times;</span>
+        <div style="font-size:40px; margin-bottom:10px;">📢</div>
+        <h3 style="margin-bottom:10px; color:#222;">등록된 공지사항이 없습니다.</h3>
+        <p style="color:#888; font-size:14px; margin-bottom:20px;">새로운 소식이 업데이트되면 이곳에 안내해 드릴게요!</p>
+        <button class="btn btn-black btn-full" onclick="closeModal('noticeModal')">확인</button>
+    </div>
+</div>
+
+<!-- 🎁 이벤트 모달 창 -->
+<div id="eventModal" class="modal">
+    <div class="modal-content" style="text-align:center; padding:30px;">
+        <span onclick="closeModal('eventModal')" class="close">&times;</span>
+        <div style="font-size:40px; margin-bottom:10px;">🎁</div>
+        <h3 style="margin-bottom:10px; color:#222;">진행 중인 이벤트가 없습니다.</h3>
+        <p style="color:#888; font-size:14px; margin-bottom:20px;">조만간 더 풍성하고 재미있는 이벤트로 찾아올게요!</p>
+        <button class="btn btn-black btn-full" onclick="closeModal('eventModal')">확인</button>
+    </div>
+</div>
+
+<!-- 👑 관리자 전용 모달 -->
+<div id="adminModal" class="modal">
+    <div class="modal-content" style="max-width:600px;">
+        <div class="modal-header">
+            <h3>👑 관리자 대시보드 (DB 암호화 검증)</h3>
+            <span onclick="closeModal('adminModal')" class="close">&times;</span>
+        </div>
+        <p style="font-size:13px; color:#666;">Firestore에 저장된 가입 유저의 AES-256 암호화 Key/IV 데이터 목록입니다.</p>
+        <div id="adminUserList" style="max-height:250px; overflow-y:auto; background:#f5f5f5; padding:10px; border-radius:6px; font-family:monospace; font-size:12px; margin-bottom:15px;">
+            불러오는 중...
+        </div>
+        <button class="btn btn-black btn-full" onclick="closeModal('adminModal')">닫기</button>
+    </div>
+</div>
+
 <body>
 
 <!-- 최상단 유틸리티 바 -->
 <div class="top-utility-bar">
     <div class="inner-wrap">
         <div class="util-left">
-            <span>공지사항</span> | <span>이벤트</span>
+            <a href="#" onclick="openNoticeModal(); return false;" style="text-decoration:none; color:inherit;">공지사항</a> | 
+            <a href="#" onclick="openEventModal(); return false;" style="text-decoration:none; color:inherit;">이벤트</a>
         </div>
         <div class="util-right">
             <span id="userStatus">비회원</span>
@@ -32,7 +94,7 @@
 <!-- 브랜드 헤더 & 검색창 -->
 <header class="store-header">
     <div class="inner-wrap header-flex">
-        <h1 class="store-logo" onclick="filterCategory('all')">BOXER</h1>
+        <h1 class="store-logo" onclick="filterCategory('all')">GACHU</h1>
         <div class="search-wrap">
             <input type="text" id="searchInput" placeholder="검색어를 입력하세요" onkeyup="handleSearch()">
             <button class="search-btn">검색</button>
@@ -44,29 +106,23 @@
 <nav class="gnb">
     <div class="inner-wrap">
         <ul class="gnb-list">
-            <li class="active" onclick="filterCategory('all', this)">스토어 홈</li>
-            <li onclick="filterCategory('keycap', this)">키캡 박스</li>
-            <li onclick="filterCategory('squishy', this)">말랑이 & 스트레스볼</li>
-            <li onclick="filterCategory('figure', this)">미니 피규어</li>
-            <li onclick="filterCategory('photocard', this)">포토카드 굿즈</li>
-            <li onclick="filterCategory('desk', this)">데스크 테리어</li>
+            <li onclick="filterCategory('all', this)" class="active">전체 상품</li>
+            <li onclick="filterCategory('keycap', this)">키캡</li>
+            <li onclick="filterCategory('keyring', this)">키링</li>
         </ul>
     </div>
 </nav>
 
 <main class="inner-wrap">
-    <!-- 메인 프로모션 배너 (스마트스토어 스타일) -->
     <div class="hero-banner">
         <h2>이달의 BEST 랜덤박스 런칭</h2>
-        <p>서버 연동 등급별 확률 100% 공개 완료[cite: 1]</p>
+        <p>서버 연동 등급별 확률 100% 공개 완료</p>
     </div>
 
-    <!-- 최근 본 상품 바 -->
     <div class="recent-view-bar">
         <strong>최근 본 상품</strong> <span id="recentItemName">없음</span>
     </div>
 
-    <!-- 상품 리스트 -->
     <div class="product-section">
         <div class="section-title">
             <h3>전체 상품</h3>
@@ -75,11 +131,37 @@
     </div>
 </main>
 
-<!-- 모달 공통 영역 (로그인, 관리자, 확률, 장바구니 등) -->
-<!-- (이전 코드의 모달 부분들을 좀 더 깔끔하게 다듬었습니다) -->
-<div id="authModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>로그인</h3><span onclick="closeModal('authModal')" class="close">&times;</span></div><form onsubmit="handleAuthSubmit(event)"><input type="email" id="authEmail" class="input-text" placeholder="이메일" required><input type="password" id="authPassword" class="input-text" placeholder="비밀번호" required><button type="submit" class="btn btn-black btn-full">로그인</button></form></div></div>
+<!-- 🔐 로그인 & 회원가입 통합 모달 -->
+<div id="authModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="authTitle">로그인</h3>
+            <span onclick="closeModal('authModal')" class="close">&times;</span>
+        </div>
+        
+        <!-- 로그인 폼 -->
+        <form id="loginForm">
+            <input type="email" id="loginEmail" class="input-text" placeholder="이메일" required style="width:100%; margin-bottom:8px; padding:10px; box-sizing:border-box;">
+            <input type="password" id="loginPassword" class="input-text" placeholder="비밀번호" required style="width:100%; margin-bottom:12px; padding:10px; box-sizing:border-box;">
+            <button type="button" class="btn btn-black btn-full" onclick="handleLoginSubmit()">로그인</button>
+            <p style="text-align:center; margin-top:12px; font-size:13px; color:#666;">
+                계정이 없으신가요? <a href="#" onclick="toggleAuthMode('signup'); return false;" style="color:#222; font-weight:bold;">회원가입</a>
+            </p>
+        </form>
 
-<!-- 상품 상세 / 옵션 구매 창 (스마트스토어 바텀시트 느낌의 대형 모달) -->
+        <!-- 회원가입 폼 -->
+        <form id="signupForm" style="display:none;">
+            <input type="email" id="signupEmail" class="input-text" placeholder="이메일" required style="width:100%; margin-bottom:8px; padding:10px; box-sizing:border-box;">
+            <input type="password" id="signupPassword" class="input-text" placeholder="비밀번호 (6자리 이상)" required style="width:100%; margin-bottom:12px; padding:10px; box-sizing:border-box;">
+            <button type="button" class="btn btn-black btn-full" onclick="handleSignupSubmit()">회원가입</button>
+            <p style="text-align:center; margin-top:12px; font-size:13px; color:#666;">
+                이미 계정이 있으신가요? <a href="#" onclick="toggleAuthMode('login'); return false;" style="color:#222; font-weight:bold;">로그인</a>
+            </p>
+        </form>
+    </div>
+</div>
+
+<!-- 상품 상세 / 옵션 구매 창 -->
 <div id="detailModal" class="modal">
     <div class="modal-content detail-content">
         <span onclick="closeModal('detailModal')" class="close">&times;</span>
@@ -96,7 +178,6 @@
                     <button class="btn btn-line btn-small" id="detailProbBtn" style="margin-top:10px;">확률 정보 투명 검증</button>
                 </div>
 
-                <!-- 옵션 선택부 -->
                 <div class="option-box">
                     <div class="total-price-wrap">
                         총 상품금액 <strong id="detailTotalPrice">0</strong>원
@@ -113,7 +194,20 @@
 </div>
 
 <!-- 확률 모달 -->
-<div id="probModal" class="modal"><div class="modal-content"><div class="modal-header"><h4>등급별 확정 확률</h4><span onclick="closeModal('probModal')" class="close">&times;</span></div><ul class="prob-list"><li>일반: <strong id="probBasic"></strong></li><li>레어: <strong id="probRare"></strong></li><li>시크릿: <strong id="probSecret"></strong></li></ul><p class="prob-note">* Firebase Cloud Functions 추첨 기반[cite: 1]</p></div></div>
+<div id="probModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h4>등급별 확정 확률</h4>
+            <span onclick="closeModal('probModal')" class="close">&times;</span>
+        </div>
+        <ul class="prob-list">
+            <li>일반: <strong id="probBasic"></strong></li>
+            <li>레어: <strong id="probRare"></strong></li>
+            <li>시크릿: <strong id="probSecret"></strong></li>
+        </ul>
+        <p class="prob-note">* Firebase Cloud Functions 추첨 기반</p>
+    </div>
+</div>
 
 <script src="app.js"></script>
 </body>
