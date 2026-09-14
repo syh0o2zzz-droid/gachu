@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BOXER | 프리미엄 랜덤박스 스토어</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- 파이어베이스 & 토스페이먼츠 SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://js.tosspayments.com/v1/payment"></script>
+</head>
+<body>
+
+<!-- 최상단 유틸리티 바 -->
+<div class="top-utility-bar">
+    <div class="inner-wrap">
+        <div class="util-left">
+            <span>공지사항</span> | <span>이벤트</span>
+        </div>
+        <div class="util-right">
+            <span id="userStatus">비회원</span>
+            <a href="#" id="authBtn" onclick="openAuthModal()">로그인</a>
+            <a href="#" id="adminBtn" style="display:none;" onclick="openAdminModal()">관리자</a>
+            <a href="#" onclick="openWishlistModal()">찜한상품 <span id="wishBadge" class="count-badge">0</span></a>
+            <a href="#" onclick="openCartModal()">장바구니 <span id="cartBadge" class="count-badge">0</span></a>
+        </div>
+    </div>
+</div>
+
+<!-- 브랜드 헤더 & 검색창 -->
+<header class="store-header">
+    <div class="inner-wrap header-flex">
+        <h1 class="store-logo" onclick="filterCategory('all')">BOXER</h1>
+        <div class="search-wrap">
+            <input type="text" id="searchInput" placeholder="검색어를 입력하세요" onkeyup="handleSearch()">
+            <button class="search-btn">검색</button>
+        </div>
+    </div>
+</header>
+
+<!-- GNB 네비게이션 -->
+<nav class="gnb">
+    <div class="inner-wrap">
+        <ul class="gnb-list">
+            <li class="active" onclick="filterCategory('all', this)">스토어 홈</li>
+            <li onclick="filterCategory('keycap', this)">키캡 박스</li>
+            <li onclick="filterCategory('squishy', this)">말랑이 & 스트레스볼</li>
+            <li onclick="filterCategory('figure', this)">미니 피규어</li>
+            <li onclick="filterCategory('photocard', this)">포토카드 굿즈</li>
+            <li onclick="filterCategory('desk', this)">데스크 테리어</li>
+        </ul>
+    </div>
+</nav>
+
+<main class="inner-wrap">
+    <!-- 메인 프로모션 배너 (스마트스토어 스타일) -->
+    <div class="hero-banner">
+        <h2>이달의 BEST 랜덤박스 런칭</h2>
+        <p>서버 연동 등급별 확률 100% 공개 완료[cite: 1]</p>
+    </div>
+
+    <!-- 최근 본 상품 바 -->
+    <div class="recent-view-bar">
+        <strong>최근 본 상품</strong> <span id="recentItemName">없음</span>
+    </div>
+
+    <!-- 상품 리스트 -->
+    <div class="product-section">
+        <div class="section-title">
+            <h3>전체 상품</h3>
+        </div>
+        <div id="productGrid" class="product-grid"></div>
+    </div>
+</main>
+
+<!-- 모달 공통 영역 (로그인, 관리자, 확률, 장바구니 등) -->
+<!-- (이전 코드의 모달 부분들을 좀 더 깔끔하게 다듬었습니다) -->
+<div id="authModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>로그인</h3><span onclick="closeModal('authModal')" class="close">&times;</span></div><form onsubmit="handleAuthSubmit(event)"><input type="email" id="authEmail" class="input-text" placeholder="이메일" required><input type="password" id="authPassword" class="input-text" placeholder="비밀번호" required><button type="submit" class="btn btn-black btn-full">로그인</button></form></div></div>
+
+<!-- 상품 상세 / 옵션 구매 창 (스마트스토어 바텀시트 느낌의 대형 모달) -->
+<div id="detailModal" class="modal">
+    <div class="modal-content detail-content">
+        <span onclick="closeModal('detailModal')" class="close">&times;</span>
+        <div class="detail-layout">
+            <div class="detail-image"><img id="detailMainImg" src="" alt="상품이미지"></div>
+            <div class="detail-info">
+                <h2 id="detailName" class="p-name">상품명</h2>
+                <div class="p-price"><strong id="detailPrice">0</strong>원</div>
+                <div class="p-desc" id="detailDesc">상품 설명</div>
+                
+                <div class="p-lineup">
+                    <h4>🎁 구성품 라인업</h4>
+                    <ul id="lineupList"></ul>
+                    <button class="btn btn-line btn-small" id="detailProbBtn" style="margin-top:10px;">확률 정보 투명 검증</button>
+                </div>
+
+                <!-- 옵션 선택부 -->
+                <div class="option-box">
+                    <div class="total-price-wrap">
+                        총 상품금액 <strong id="detailTotalPrice">0</strong>원
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn btn-line btn-wish" id="detailWishBtn">찜하기</button>
+                        <button class="btn btn-line btn-cart" id="detailCartBtn">장바구니</button>
+                        <button class="btn btn-black btn-buy" id="detailBuyBtn">바로결제</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 확률 모달 -->
+<div id="probModal" class="modal"><div class="modal-content"><div class="modal-header"><h4>등급별 확정 확률</h4><span onclick="closeModal('probModal')" class="close">&times;</span></div><ul class="prob-list"><li>일반: <strong id="probBasic"></strong></li><li>레어: <strong id="probRare"></strong></li><li>시크릿: <strong id="probSecret"></strong></li></ul><p class="prob-note">* Firebase Cloud Functions 추첨 기반[cite: 1]</p></div></div>
+
+<script src="app.js"></script>
+</body>
+</html>
