@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GACHU | 마이페이지</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .mp-container { max-width: 800px; margin: 30px auto; padding: 25px; background: #fff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .mp-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #222; padding-bottom: 12px; margin-bottom: 20px; }
+        .header-left { display: flex; align-items: center; gap: 10px; }
+        .brand-logo { font-size: 22px; font-weight: bold; color: #222; text-decoration: none; }
+        .back-arrow-btn { font-size: 20px; font-weight: bold; color: #222; cursor: pointer; text-decoration: none; border: 1px solid #ccc; padding: 2px 10px; border-radius: 4px; }
+        .mp-tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #ddd; }
+        .mp-tab { padding: 10px 15px; cursor: pointer; font-weight: bold; color: #666; border-bottom: 2px solid transparent; font-size: 14px; }
+        .mp-tab.active { color: #222; border-bottom-color: #222; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .info-card { background: #fdfdfd; border: 1px solid #eee; padding: 15px; border-radius: 6px; margin-bottom: 10px; }
+        .toast-notice { position: fixed; top: 20px; right: 20px; background: rgba(0,0,0,0.85); color: #fff; padding: 12px 20px; border-radius: 6px; font-size: 14px; z-index: 10000; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+    </style>
+</head>
+<body style="background:#f8f9fa;">
+
+<div id="toastNotice" class="toast-notice"></div>
+
+<div class="mp-container">
+    <div class="mp-header">
+        <div class="header-left">
+            <a href="index.html" class="brand-logo">GACHU</a>
+            <a href="index.html" class="back-arrow-btn" title="쇼핑몰로 돌아가기">←</a>
+        </div>
+        <h2 style="color:#222; font-size:20px;">마이페이지</h2>
+    </div>
+
+    <div class="mp-tabs">
+        <div class="mp-tab active" onclick="switchTab('infoTab', this)">내 정보</div>
+        <div class="mp-tab" onclick="switchTab('orderTab', this)">주문 내역</div>
+        <div class="mp-tab" onclick="switchTab('cartTab', this)">장바구니 관리</div>
+        <div class="mp-tab" onclick="switchTab('wishTab', this)">찜한 상품</div>
+        <div class="mp-tab" onclick="switchTab('reviewTab', this)">작성한 리뷰</div>
+    </div>
+
+    <!-- 1. 내 정보 -->
+    <div id="infoTab" class="tab-content active">
+        <div class="info-card">
+            <h4>로그인 계정</h4>
+            <p id="myEmailText" style="margin-top:5px; color:#333; font-weight:bold;">확인 중...</p>
+        </div>
+        <div class="info-card">
+            <h4>기본 배송 정보</h4>
+            <p style="margin-top:5px; color:#666; font-size:13px;">최근 결제 완료 시 사용된 배송지 정보가 자동 적용됩니다.</p>
+        </div>
+    </div>
+
+    <!-- 2. 주문 내역 -->
+    <div id="orderTab" class="tab-content">
+        <div id="orderListContainer">주문 내역이 없습니다.</div>
+    </div>
+
+    <!-- 3. 장바구니 -->
+    <div id="cartTab" class="tab-content">
+        <div style="text-align:right; margin-bottom:10px;">
+            <button class="btn btn-line" onclick="deleteSelectedCart()">선택 삭제</button>
+            <button class="btn btn-black" onclick="checkoutSelectedCart()">선택 결제하기</button>
+        </div>
+        <div id="cartContainer">장바구니가 비어있습니다.</div>
+    </div>
+
+    <!-- 4. 찜 목록 -->
+    <div id="wishTab" class="tab-content">
+        <div style="text-align:right; margin-bottom:10px;">
+            <button class="btn btn-line" onclick="deleteSelectedWishlist()">선택 삭제</button>
+        </div>
+        <div id="wishContainer">찜한 상품이 없습니다.</div>
+    </div>
+
+    <!-- 5. 작성한 리뷰 관리 (수정, 삭제) -->
+    <div id="reviewTab" class="tab-content">
+        <div id="myReviewContainer">작성한 리뷰가 없습니다.</div>
+    </div>
+</div>
+
+<script>
+    function showToast(msg) {
+        const toast = document.getElementById("toastNotice");
+        if (!toast) return;
+        toast.innerText = msg;
+        toast.style.display = "block";
+        setTimeout(() => { toast.style.display = "none"; }, 2000);
+    }
+
+    function switchTab(tabId, el) {
+        document.querySelectorAll('.mp-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        el.classList.add('active');
+        document.getElementById(tabId).classList.add('active');
+    }
+
+    window.onload = () => {
+        const user = localStorage.getItem("gachuCurrentUser");
+        if (user && user !== "null") {
+            document.getElementById("myEmailText").innerText = user;
+        } else {
+            document.getElementById("myEmailText").innerText = "비로그인 상태입니다.";
+        }
+
+        renderOrders();
+        renderCart();
+        renderWish();
+        renderMyReviews();
+    };
+
+    function renderOrders() {
+        const orders = JSON.parse(localStorage.getItem("gachuOrders") || "[]");
+        const container = document.getElementById("orderListContainer");
+        if(orders.length === 0) {
+            container.innerHTML = "<p style='color:#888; padding:20px; text-align:center;'>최근 주문 내역이 없습니다.</p>";
+            return;
+        }
+        container.innerHTML = orders.map(o => `
+            <div class="info-card" style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <strong>${o.name}</strong>
+                    <div style="font-size:12px; color:#888;">${o.date}</div>
+                </div>
+                <div style="font-weight:bold;">${o.price.toLocaleString()}원 (결제 완료)</div>
+            </div>
+        `).join('');
+    }
+
+    function renderCart() {
+        const cart = JSON.parse(localStorage.getItem("gachuCart") || "[]");
+        const container = document.getElementById("cartContainer");
+        if(cart.length === 0) {
+            container.innerHTML = "<p style='color:#888; padding:20px; text-align:center;'>장바구니가 비어있습니다.</p>";
+            return;
+        }
+        container.innerHTML = cart.map((item, idx) => `
+            <div class="info-card" style="display:flex; align-items:center; justify-content:space-between;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <input type="checkbox" class="cart-chk" data-index="${idx}" checked>
+                    <img src="${item.image}" style="width:45px; height:45px; object-fit:cover; border-radius:4px;">
+                    <div>
+                        <strong>${item.name}</strong>
+                        <div style="font-weight:bold;">${item.price.toLocaleString()}원</div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function renderWish() {
+        const wish = JSON.parse(localStorage.getItem("gachuWish") || "[]");
+        const container = document.getElementById("wishContainer");
+        if(wish.length === 0) {
+            container.innerHTML = "<p style='color:#888; padding:20px; text-align:center;'>찜한 상품이 없습니다.</p>";
+            return;
+        }
+        container.innerHTML = wish.map((item, idx) => `
+            <div class="info-card" style="display:flex; align-items:center; justify-content:space-between;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <input type="checkbox" class="wish-chk" data-index="${idx}" checked>
+                    <img src="${item.image}" style="width:45px; height:45px; object-fit:cover; border-radius:4px;">
+                    <div>
+                        <strong>${item.name}</strong>
+                        <div style="font-weight:bold;">${item.price.toLocaleString()}원</div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // 작성한 리뷰 목록 렌더링 및 수정/삭제
+    function renderMyReviews() {
+        const reviews = JSON.parse(localStorage.getItem("gachuReviews") || "[]");
+        const container = document.getElementById("myReviewContainer");
+        if (reviews.length === 0) {
+            container.innerHTML = "<p style='color:#888; padding:20px; text-align:center;'>작성한 리뷰가 없습니다.</p>";
+            return;
+        }
+        container.innerHTML = reviews.map((r, idx) => `
+            <div class="info-card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                    <strong style="color:#222; font-size:14px;">[${r.pName}]</strong>
+                    <div>
+                        <button class="btn btn-line" style="font-size:11px; padding:2px 6px;" onclick="editReview(${idx})">수정</button>
+                        <button class="btn btn-line" style="font-size:11px; padding:2px 6px;" onclick="deleteReview(${idx})">삭제</button>
+                    </div>
+                </div>
+                <div id="reviewText_${idx}" style="font-size:13px; color:#444;">${r.text}</div>
+            </div>
+        `).join('');
+    }
+
+    function editReview(index) {
+        let reviews = JSON.parse(localStorage.getItem("gachuReviews") || "[]");
+        const newText = prompt("리뷰 내용을 수정해 주세요:", reviews[index].text);
+        if (newText !== null && newText.trim() !== "") {
+            reviews[index].text = newText.trim();
+            localStorage.setItem("gachuReviews", JSON.stringify(reviews));
+            renderMyReviews();
+            showToast("리뷰가 수정되었습니다.");
+        }
+    }
+
+    function deleteReview(index) {
+        let reviews = JSON.parse(localStorage.getItem("gachuReviews") || "[]");
+        reviews.splice(index, 1);
+        localStorage.setItem("gachuReviews", JSON.stringify(reviews));
+        renderMyReviews();
+        showToast("리뷰가 삭제되었습니다.");
+    }
+
+    function deleteSelectedCart() {
+        let cart = JSON.parse(localStorage.getItem("gachuCart") || "[]");
+        const chks = document.querySelectorAll(".cart-chk");
+        let removeIdx = [];
+        chks.forEach(c => { if(c.checked) removeIdx.push(parseInt(c.getAttribute("data-index"))); });
+        
+        if (removeIdx.length === 0) {
+            showToast("삭제할 항목을 선택해 주세요.");
+            return;
+        }
+
+        cart = cart.filter((_, idx) => !removeIdx.includes(idx));
+        localStorage.setItem("gachuCart", JSON.stringify(cart));
+        renderCart();
+        showToast("선택 항목이 삭제되었습니다.");
+    }
+
+    function deleteSelectedWishlist() {
+        let wish = JSON.parse(localStorage.getItem("gachuWish") || "[]");
+        const chks = document.querySelectorAll(".wish-chk");
+        let removeIdx = [];
+        chks.forEach(c => { if(c.checked) removeIdx.push(parseInt(c.getAttribute("data-index"))); });
+        
+        if (removeIdx.length === 0) {
+            showToast("삭제할 항목을 선택해 주세요.");
+            return;
+        }
+
+        wish = wish.filter((_, idx) => !removeIdx.includes(idx));
+        localStorage.setItem("gachuWish", JSON.stringify(wish));
+        renderWish();
+        showToast("선택 항목이 삭제되었습니다.");
+    }
+
+    function checkoutSelectedCart() {
+        const cart = JSON.parse(localStorage.getItem("gachuCart") || "[]");
+        const chks = document.querySelectorAll(".cart-chk");
+        let selected = [];
+        chks.forEach(c => { if(c.checked) selected.push(cart[parseInt(c.getAttribute("data-index"))]); });
+        
+        if(selected.length === 0) {
+            showToast("결제할 상품을 선택해주세요.");
+            return;
+        }
+        const total = selected.reduce((s,i) => s + i.price, 0);
+        const name = selected.length === 1 ? selected[0].name : `${selected[0].name} 외 ${selected.length - 1}건`;
+        
+        sessionStorage.setItem("checkoutOrder", JSON.stringify({ name: name, price: total }));
+        location.href = "checkout.html";
+    }
+</script>
+</body>
+</html>

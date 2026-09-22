@@ -5,88 +5,59 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GACHU | 프리미엄 랜덤박스 스토어</title>
     <link rel="stylesheet" href="style.css">
-    <!-- 파이어베이스 & 토스페이먼츠 SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="https://js.tosspayments.com/v1/payment"></script>
+    <style>
+        .count-badge { background: #e74c3c; color: #fff; padding: 2px 6px; border-radius: 10px; font-size: 11px; font-weight: bold; margin-left: 2px; }
+        .toast-notice { position: fixed; top: 20px; right: 20px; background: rgba(0,0,0,0.85); color: #fff; padding: 12px 20px; border-radius: 6px; font-size: 14px; z-index: 10000; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        
+        /* 우측 세로 스크롤 플로팅 패널 */
+        .right-quick-panel { position: fixed; top: 90px; right: 20px; width: 190px; max-height: 80vh; overflow-y: auto; background: #fff; border: 1px solid #ccc; border-radius: 8px; padding: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 999; text-align: left; }
+        .panel-section-title { font-size: 12px; font-weight: bold; color: #222; border-bottom: 1px solid #222; padding-bottom: 4px; margin: 12px 0 6px 0; }
+        .panel-section-title:first-child { margin-top: 0; }
+        .panel-item-box { font-size: 11px; color: #555; background: #f9f9f9; padding: 6px; border-radius: 4px; margin-bottom: 4px; }
+        .quick-cart-item { display: flex; align-items: center; gap: 4px; border-bottom: 1px dashed #eee; padding: 4px 0; font-size: 11px; }
+    </style>
 </head>
-
-<!-- ❤️ 찜 목록 모달 창 -->
-<div id="wishlistModal" class="modal">
-    <div class="modal-content">
-        <span onclick="closeModal('wishlistModal')" class="close">&times;</span>
-        <div class="modal-header"><h3>찜한 상품 목록</h3></div>
-        <div id="wishlistContainer" class="modal-list-container" style="max-height:200px; overflow-y:auto; margin-bottom:15px;"></div>
-        <button class="btn btn-black btn-full" onclick="closeModal('wishlistModal')">닫기</button>
-    </div>
-</div>
-
-<!-- 🛒 장바구니 목록 모달 창 -->
-<div id="cartModal" class="modal">
-    <div class="modal-content">
-        <span onclick="closeModal('cartModal')" class="close">&times;</span>
-        <div class="modal-header"><h3>장바구니 목록</h3></div>
-        <div id="cartContainer" class="modal-list-container" style="max-height:200px; overflow-y:auto; margin-bottom:15px;"></div>
-        <div class="total-price-wrap" style="margin-bottom:15px; font-weight:bold;">
-            총 결제 금액: <strong id="cartTotalPrice" style="color:#e74c3c;">0원</strong>
-        </div>
-        <button class="btn btn-black btn-full" onclick="checkoutCart()">장바구니 전체 결제하기</button>
-    </div>
-</div>
-
-<!-- 📢 공지사항 모달 창 -->
-<div id="noticeModal" class="modal">
-    <div class="modal-content" style="text-align:center; padding:30px;">
-        <span onclick="closeModal('noticeModal')" class="close">&times;</span>
-        <div style="font-size:40px; margin-bottom:10px;">📢</div>
-        <h3 style="margin-bottom:10px; color:#222;">등록된 공지사항이 없습니다.</h3>
-        <p style="color:#888; font-size:14px; margin-bottom:20px;">새로운 소식이 업데이트되면 이곳에 안내해 드릴게요!</p>
-        <button class="btn btn-black btn-full" onclick="closeModal('noticeModal')">확인</button>
-    </div>
-</div>
-
-<!-- 🎁 이벤트 모달 창 -->
-<div id="eventModal" class="modal">
-    <div class="modal-content" style="text-align:center; padding:30px;">
-        <span onclick="closeModal('eventModal')" class="close">&times;</span>
-        <div style="font-size:40px; margin-bottom:10px;">🎁</div>
-        <h3 style="margin-bottom:10px; color:#222;">진행 중인 이벤트가 없습니다.</h3>
-        <p style="color:#888; font-size:14px; margin-bottom:20px;">조만간 더 풍성하고 재미있는 이벤트로 찾아올게요!</p>
-        <button class="btn btn-black btn-full" onclick="closeModal('eventModal')">확인</button>
-    </div>
-</div>
-
-<!-- 👑 관리자 전용 모달 -->
-<div id="adminModal" class="modal">
-    <div class="modal-content" style="max-width:600px;">
-        <div class="modal-header">
-            <h3>👑 관리자 대시보드 (DB 암호화 검증)</h3>
-            <span onclick="closeModal('adminModal')" class="close">&times;</span>
-        </div>
-        <p style="font-size:13px; color:#666;">Firestore에 저장된 가입 유저의 AES-256 암호화 Key/IV 데이터 목록입니다.</p>
-        <div id="adminUserList" style="max-height:250px; overflow-y:auto; background:#f5f5f5; padding:10px; border-radius:6px; font-family:monospace; font-size:12px; margin-bottom:15px;">
-            불러오는 중...
-        </div>
-        <button class="btn btn-black btn-full" onclick="closeModal('adminModal')">닫기</button>
-    </div>
-</div>
-
 <body>
+
+<!-- 토스트 알림창 -->
+<div id="toastNotice" class="toast-notice"></div>
+
+<!-- 우측 플로팅 패널 (최근본상품 -> 찜목록 -> 장바구니 -> 결제버튼 순서) -->
+<div class="right-quick-panel">
+    <div class="panel-section-title">최근 본 상품</div>
+    <div id="quickRecentBox" class="panel-item-box">
+        <p style="font-size:11px; color:#888; text-align:center; margin:0;">내역 없음</p>
+    </div>
+
+    <div class="panel-section-title">찜 목록</div>
+    <div id="quickWishBox" class="panel-item-box" style="max-height:80px; overflow-y:auto;">
+        <p style="font-size:11px; color:#888; text-align:center; margin:0;">비어있음</p>
+    </div>
+
+    <div class="panel-section-title">장바구니 목록</div>
+    <div id="quickCartBox" class="panel-item-box" style="max-height:120px; overflow-y:auto;">
+        <p style="font-size:11px; color:#888; text-align:center; margin:0;">비어있음</p>
+    </div>
+
+    <button class="btn btn-black btn-full" onclick="checkoutFromQuickPanel()" style="padding:8px 0; font-size:12px; font-weight:bold; margin-top:10px;">선택 상품 결제하기</button>
+</div>
 
 <!-- 최상단 유틸리티 바 -->
 <div class="top-utility-bar">
     <div class="inner-wrap">
         <div class="util-left">
-            <a href="#" onclick="openNoticeModal(); return false;" style="text-decoration:none; color:inherit;">공지사항</a> | 
-            <a href="#" onclick="openEventModal(); return false;" style="text-decoration:none; color:inherit;">이벤트</a>
+            <a href="notice.html" style="text-decoration:none; color:inherit;">공지사항</a> | 
+            <a href="event.html" style="text-decoration:none; color:inherit;">이벤트</a>
         </div>
         <div class="util-right">
-            <span id="userStatus">비회원</span>
+            <span id="userStatus" style="display:none;"></span>
+            <a href="#" id="signupBtn" onclick="openSignupModal(); return false;">회원가입</a> | 
             <a href="#" id="authBtn" onclick="openAuthModal()">로그인</a>
             <a href="#" id="adminBtn" style="display:none;" onclick="openAdminModal()">관리자</a>
-            <a href="#" onclick="openWishlistModal()">찜한상품 <span id="wishBadge" class="count-badge">0</span></a>
-            <a href="#" onclick="openCartModal()">장바구니 <span id="cartBadge" class="count-badge">0</span></a>
+            <a href="mypage.html" style="font-weight:bold;">마이페이지 <span id="cartCountBadge" class="count-badge">0</span></a>
         </div>
     </div>
 </div>
@@ -94,16 +65,16 @@
 <!-- 브랜드 헤더 & 검색창 -->
 <header class="store-header">
     <div class="inner-wrap header-flex">
-        <h1 class="store-logo" onclick="filterCategory('all')">GACHU</h1>
+        <h1 class="store-logo" onclick="filterCategory('all')" style="cursor:pointer; color:#222;">GACHU</h1>
         <div class="search-wrap">
             <input type="text" id="searchInput" placeholder="검색어를 입력하세요" onkeyup="handleSearch()">
-            <button class="search-btn">검색</button>
+            <button class="search-btn" style="background:#222; color:#fff;">검색</button>
         </div>
     </div>
 </header>
 
 <!-- GNB 네비게이션 -->
-<nav class="gnb">
+<nav class="gnb" style="border-bottom:2px solid #222;">
     <div class="inner-wrap">
         <ul class="gnb-list">
             <li onclick="filterCategory('all', this)" class="active">전체 상품</li>
@@ -114,32 +85,27 @@
 </nav>
 
 <main class="inner-wrap">
-    <div class="hero-banner">
+    <div class="hero-banner" style="background:#222; color:white; padding:30px; border-radius:8px; margin-top:15px;">
         <h2>이달의 BEST 랜덤박스 런칭</h2>
         <p>서버 연동 등급별 확률 100% 공개 완료</p>
     </div>
 
-    <div class="recent-view-bar">
-        <strong>최근 본 상품</strong> <span id="recentItemName">없음</span>
-    </div>
-
-    <div class="product-section">
+    <div class="product-section" style="margin-top:20px;">
         <div class="section-title">
-            <h3>전체 상품</h3>
+            <h3 style="color:#222;">전체 상품</h3>
         </div>
         <div id="productGrid" class="product-grid"></div>
     </div>
 </main>
 
-<!-- 🔐 로그인 & 회원가입 통합 모달 -->
+<!-- 로그인 & 회원가입 통합 모달 -->
 <div id="authModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h3 id="authTitle">로그인</h3>
+            <h3 id="authTitle" style="color:#222;">로그인</h3>
             <span onclick="closeModal('authModal')" class="close">&times;</span>
         </div>
         
-        <!-- 로그인 폼 -->
         <form id="loginForm">
             <input type="email" id="loginEmail" class="input-text" placeholder="이메일" required style="width:100%; margin-bottom:8px; padding:10px; box-sizing:border-box;">
             <input type="password" id="loginPassword" class="input-text" placeholder="비밀번호" required style="width:100%; margin-bottom:12px; padding:10px; box-sizing:border-box;">
@@ -149,7 +115,6 @@
             </p>
         </form>
 
-        <!-- 회원가입 폼 -->
         <form id="signupForm" style="display:none;">
             <input type="email" id="signupEmail" class="input-text" placeholder="이메일" required style="width:100%; margin-bottom:8px; padding:10px; box-sizing:border-box;">
             <input type="password" id="signupPassword" class="input-text" placeholder="비밀번호 (6자리 이상)" required style="width:100%; margin-bottom:12px; padding:10px; box-sizing:border-box;">
@@ -161,26 +126,31 @@
     </div>
 </div>
 
-<!-- 상품 상세 / 옵션 구매 창 -->
+<!-- 상품 상세 창 -->
 <div id="detailModal" class="modal">
     <div class="modal-content detail-content">
         <span onclick="closeModal('detailModal')" class="close">&times;</span>
         <div class="detail-layout">
-            <div class="detail-image"><img id="detailMainImg" src="" alt="상품이미지"></div>
+            <div class="detail-image" style="position:relative;">
+                <img id="detailMainImg" src="" alt="상품이미지" style="width:100%; display:block; border-radius:6px;">
+                <button onclick="prevModalImage()" style="position:absolute; top:50%; left:10px; transform:translateY(-50%); background:rgba(0,0,0,0.5); color:#fff; border:none; padding:8px 12px; cursor:pointer; border-radius:50%; font-size:14px; z-index:10;">❮</button>
+                <button onclick="nextModalImage()" style="position:absolute; top:50%; right:10px; transform:translateY(-50%); background:rgba(0,0,0,0.5); color:#fff; border:none; padding:8px 12px; cursor:pointer; border-radius:50%; font-size:14px; z-index:10;">❯</button>
+                <div id="imageCountBadge" style="position:absolute; bottom:15px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.6); color:#fff; padding:3px 8px; border-radius:10px; font-size:11px; z-index:10;">1 / 1</div>
+            </div>
             <div class="detail-info">
                 <h2 id="detailName" class="p-name">상품명</h2>
-                <div class="p-price"><strong id="detailPrice">0</strong>원</div>
+                <div class="p-price"><strong id="detailPrice" style="color:#222;">0</strong>원</div>
                 <div class="p-desc" id="detailDesc">상품 설명</div>
                 
                 <div class="p-lineup">
-                    <h4>🎁 구성품 라인업</h4>
+                    <h4>구성품 라인업</h4>
                     <ul id="lineupList"></ul>
-                    <button class="btn btn-line btn-small" id="detailProbBtn" style="margin-top:10px;">확률 정보 투명 검증</button>
+                    <button class="btn btn-line btn-small" id="detailProbBtn" style="margin-top:10px;">확률 정보 확인</button>
                 </div>
 
                 <div class="option-box">
                     <div class="total-price-wrap">
-                        총 상품금액 <strong id="detailTotalPrice">0</strong>원
+                        총 상품금액 <strong id="detailTotalPrice" style="color:#222;">0</strong>원
                     </div>
                     <div class="action-buttons">
                         <button class="btn btn-line btn-wish" id="detailWishBtn">찜하기</button>
@@ -188,6 +158,18 @@
                         <button class="btn btn-black btn-buy" id="detailBuyBtn">바로결제</button>
                     </div>
                 </div>
+
+                <div class="review-section" style="margin-top:20px; border-top:1px solid #eee; padding-top:15px;">
+                    <h4 style="color:#222;">구매 후기 (리뷰)</h4>
+                    <div id="reviewList" style="max-height:120px; overflow-y:auto; font-size:13px; margin:10px 0; background:#f9f9f9; padding:8px; border-radius:4px;">
+                        등록된 리뷰가 없습니다.
+                    </div>
+                    <div style="display:flex; gap:6px;">
+                        <input type="text" id="reviewInput" placeholder="리뷰를 작성해보세요" style="flex:1; padding:8px; font-size:12px; border:1px solid #ccc; border-radius:4px;">
+                        <button type="button" class="btn btn-black" onclick="addReview()" style="padding:8px 12px; font-size:12px;">등록</button>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
@@ -197,15 +179,10 @@
 <div id="probModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h4>등급별 확정 확률</h4>
+            <h4>확정 확률 정보</h4>
             <span onclick="closeModal('probModal')" class="close">&times;</span>
         </div>
-        <ul class="prob-list">
-            <li>일반: <strong id="probBasic"></strong></li>
-            <li>레어: <strong id="probRare"></strong></li>
-            <li>시크릿: <strong id="probSecret"></strong></li>
-        </ul>
-        <p class="prob-note">* Firebase Cloud Functions 추첨 기반</p>
+        <ul id="probDetailList" class="prob-list" style="margin-top:15px; font-size:14px; line-height:1.8;"></ul>
     </div>
 </div>
 

@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GACHU | 관리자 페이지</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <style>
+        .admin-container { max-width: 1000px; margin: 30px auto; padding: 25px; background: #fff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .admin-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #222; padding-bottom: 12px; margin-bottom: 20px; }
+        .header-left { display: flex; align-items: center; gap: 10px; }
+        .brand-logo { font-size: 22px; font-weight: bold; color: #222; text-decoration: none; }
+        .back-arrow-btn { font-size: 20px; font-weight: bold; color: #222; cursor: pointer; text-decoration: none; border: 1px solid #ccc; padding: 2px 10px; border-radius: 4px; }
+        
+        .admin-tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #ddd; }
+        .admin-tab { padding: 10px 15px; cursor: pointer; font-weight: bold; color: #666; border-bottom: 2px solid transparent; font-size: 14px; }
+        .admin-tab.active { color: #222; border-bottom-color: #222; }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .admin-card { background: #fdfdfd; border: 1px solid #eee; padding: 15px; border-radius: 6px; margin-bottom: 12px; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        .form-input { padding: 8px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box; }
+        
+        .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+        .admin-table th, .admin-table td { border: 1px solid #eee; padding: 8px; text-align: center; }
+        .admin-table th { background: #f4f4f4; color: #222; }
+        
+        .toast-notice { position: fixed; top: 20px; right: 20px; background: rgba(0,0,0,0.85); color: #fff; padding: 12px 20px; border-radius: 6px; font-size: 14px; z-index: 10000; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+    </style>
+</head>
+<body style="background:#f8f9fa;">
+
+<div id="toastNotice" class="toast-notice"></div>
+
+<div class="admin-container">
+    <div class="admin-header">
+        <div class="header-left">
+            <a href="index.html" class="brand-logo">GACHU</a>
+            <a href="index.html" class="back-arrow-btn" title="쇼핑몰로 돌아가기">←</a>
+        </div>
+        <h2 style="color:#222; font-size:20px;">관리자 시스템</h2>
+    </div>
+
+    <div class="admin-tabs">
+        <div class="admin-tab active" onclick="switchTab('pTab', this)">1. 상품 관리</div>
+        <div class="admin-tab" onclick="switchTab('oTab', this)">2. 주문 및 배송 관리</div>
+        <div class="admin-tab" onclick="switchTab('uTab', this)">3. 회원 관리</div>
+        <div class="admin-tab" onclick="switchTab('bTab', this)">4. 게시글 및 리뷰 관리</div>
+    </div>
+
+    <!-- 1. 상품 관리 (확률 제외) -->
+    <div id="pTab" class="tab-content active">
+        <div class="admin-card">
+            <h4 style="margin-bottom:10px;">신규 상품 등록</h4>
+            <div class="form-grid">
+                <input type="text" id="pName" class="form-input" placeholder="상품명">
+                <input type="number" id="pPrice" class="form-input" placeholder="가격 (원)">
+                <select id="pCategory" class="form-input">
+                    <option value="keycap">키캡</option>
+                    <option value="keyring">키링</option>
+                </select>
+                <input type="text" id="pImg" class="form-input" placeholder="이미지 경로 (ex: images/과일 메인.png)">
+            </div>
+            <textarea id="pDesc" class="form-input" placeholder="상품 설명을 입력하세요" style="height:60px; margin-bottom:10px;"></textarea>
+            <button class="btn btn-black" onclick="addProduct()">상품 등록하기</button>
+        </div>
+
+        <div class="admin-card">
+            <h4>등록된 상품 목록</h4>
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>카테고리</th>
+                        <th>상품명</th>
+                        <th>가격</th>
+                        <th>관리</th>
+                    </tr>
+                </thead>
+                <tbody id="pTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 2. 주문 및 배송 관리 -->
+    <div id="oTab" class="tab-content">
+        <div class="admin-card">
+            <h4>주문 및 배송 현황</h4>
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>주문일자</th>
+                        <th>주문 상품</th>
+                        <th>결제 금액</th>
+                        <th>배송 상태</th>
+                        <th>상태 변경</th>
+                    </tr>
+                </thead>
+                <tbody id="oTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 3. 회원 관리 -->
+    <div id="uTab" class="tab-content">
+        <div class="admin-card">
+            <h4>가입 회원 목록</h4>
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>회원 이메일</th>
+                        <th>권한</th>
+                        <th>계정 관리</th>
+                    </tr>
+                </thead>
+                <tbody id="uTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 4. 게시글 및 리뷰 관리 -->
+    <div id="bTab" class="tab-content">
+        <div class="admin-card">
+            <h4 style="margin-bottom:10px;">공지사항 작성</h4>
+            <input type="text" id="noticeTitleInput" class="form-input" placeholder="공지사항 제목" style="margin-bottom:8px;">
+            <button class="btn btn-black" onclick="addNotice()">공지 등록</button>
+        </div>
+
+        <div class="admin-card">
+            <h4>전체 등록 리뷰 관리</h4>
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>상품 ID</th>
+                        <th>작성자</th>
+                        <th>리뷰 내용</th>
+                        <th>관리</th>
+                    </tr>
+                </thead>
+                <tbody id="rTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    function showToast(msg) {
+        const toast = document.getElementById("toastNotice");
+        if (!toast) return;
+        toast.innerText = msg;
+        toast.style.display = "block";
+        setTimeout(() => { toast.style.display = "none"; }, 2000);
+    }
+
+    function switchTab(tabId, el) {
+        document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        el.classList.add('active');
+        document.getElementById(tabId).classList.add('active');
+    }
+
+    window.onload = () => {
+        renderProducts();
+        renderOrders();
+        renderUsers();
+        renderReviews();
+    };
+
+    // 1. 상품 관리 로직
+    function renderProducts() {
+        const products = [
+            { id: 1, category: "keycap", name: "딸깍이 클리커 키캡", price: 9900 },
+            { id: 2, category: "keycap", name: "대왕 키캡", price: 12900 },
+            { id: 3, category: "keyring", name: "과일 키링", price: 6900 },
+            { id: 4, category: "keyring", name: "몬스터 인형 키링", price: 8900 }
+        ];
+        const tbody = document.getElementById("pTableBody");
+        tbody.innerHTML = products.map(p => `
+            <tr>
+                <td>${p.id}</td>
+                <td>${p.category}</td>
+                <td>${p.name}</td>
+                <td>${p.price.toLocaleString()}원</td>
+                <td><button class="btn btn-line" style="font-size:11px; padding:2px 6px;" onclick="showToast('기본 상품은 삭제할 수 없습니다.')">삭제</button></td>
+            </tr>
+        `).join('');
+    }
+
+    function addProduct() {
+        const name = document.getElementById("pName").value.trim();
+        const price = document.getElementById("pPrice").value.trim();
+        if(!name || !price) {
+            showToast("상품명과 가격을 입력해 주세요.");
+            return;
+        }
+        showToast("신규 상품이 등록되었습니다.");
+        document.getElementById("pName").value = "";
+        document.getElementById("pPrice").value = "";
+    }
+
+    // 2. 주문 및 배송 관리 로직
+    function renderOrders() {
+        const orders = JSON.parse(localStorage.getItem("gachuOrders") || "[]");
+        const tbody = document.getElementById("oTableBody");
+        if(orders.length === 0) {
+            tbody.innerHTML = "<tr><td colspan='5'>주문 내역이 없습니다.</td></tr>";
+            return;
+        }
+        tbody.innerHTML = orders.map((o, idx) => `
+            <tr>
+                <td>${o.date}</td>
+                <td>${o.name}</td>
+                <td>${o.price.toLocaleString()}원</td>
+                <td><span id="shipStatus_${idx}">결제완료</span></td>
+                <td>
+                    <button class="btn btn-line" style="font-size:11px; padding:2px 6px;" onclick="updateStatus(${idx}, '배송중')">배송중</button>
+                    <button class="btn btn-black" style="font-size:11px; padding:2px 6px;" onclick="updateStatus(${idx}, '배송완료')">배송완료</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function updateStatus(idx, status) {
+        document.getElementById(`shipStatus_${idx}`).innerText = status;
+        showToast(`배송 상태가 [${status}](으)로 변경되었습니다.`);
+    }
+
+    // 3. 회원 관리 로직
+    function renderUsers() {
+        const currentUser = localStorage.getItem("gachuCurrentUser") || "admin@gachu.com";
+        const tbody = document.getElementById("uTableBody");
+        tbody.innerHTML = `
+            <tr>
+                <td>admin@gachu.com</td>
+                <td>최고 관리자</td>
+                <td>-</td>
+            </tr>
+            <tr>
+                <td>${currentUser !== 'admin@gachu.com' ? currentUser : 'user01@gachu.com'}</td>
+                <td>일반 회원</td>
+                <td><button class="btn btn-line" style="font-size:11px; padding:2px 6px;" onclick="showToast('회원 상태가 정지되었습니다.')">활동 정지</button></td>
+            </tr>
+        `;
+    }
+
+    // 4. 게시글 및 리뷰 관리 로직
+    function addNotice() {
+        const title = document.getElementById("noticeTitleInput").value.trim();
+        if(!title) {
+            showToast("공지사항 제목을 입력해주세요.");
+            return;
+        }
+        showToast("공지사항이 등록되었습니다.");
+        document.getElementById("noticeTitleInput").value = "";
+    }
+
+    function renderReviews() {
+        const reviews = JSON.parse(localStorage.getItem("gachuReviews") || "[]");
+        const tbody = document.getElementById("rTableBody");
+        if(reviews.length === 0) {
+            tbody.innerHTML = "<tr><td colspan='4'>등록된 리뷰가 없습니다.</td></tr>";
+            return;
+        }
+        tbody.innerHTML = reviews.map((r, idx) => `
+            <tr>
+                <td>${r.pId}</td>
+                <td>${r.user}</td>
+                <td>${r.text}</td>
+                <td><button class="btn btn-line" style="font-size:11px; padding:2px 6px;" onclick="deleteAdminReview(${idx})">강제 삭제</button></td>
+            </tr>
+        `).join('');
+    }
+
+    function deleteAdminReview(idx) {
+        let reviews = JSON.parse(localStorage.getItem("gachuReviews") || "[]");
+        reviews.splice(idx, 1);
+        localStorage.setItem("gachuReviews", JSON.stringify(reviews));
+        renderReviews();
+        showToast("리뷰가 강제 삭제되었습니다.");
+    }
+</script>
+</body>
+</html>
