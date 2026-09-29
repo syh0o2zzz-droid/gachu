@@ -7,14 +7,19 @@
     <link rel="stylesheet" href="style.css">
     <!-- 토스페이 결제 SDK -->
     <script src="https://js.tosspayments.com/v1/payment"></script>
-    <!-- Daum 우편번호 서비스 (https:// 프로토콜 명시로 오류 해결) -->
+    <!-- Daum 우편번호 서비스 (https 명시) -->
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <style>
         .checkout-container { max-width: 680px; margin: 30px auto; padding: 25px; background: #fff; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
         .checkout-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #222; padding-bottom: 15px; margin-bottom: 20px; }
-        .header-left { display: flex; align-items: center; gap: 10px; }
+        .header-left { display: flex; align-items: center; gap: 12px; }
         .brand-logo { font-size: 22px; font-weight: bold; color: #222; text-decoration: none; }
-        .back-arrow-btn { font-size: 20px; font-weight: bold; color: #222; cursor: pointer; text-decoration: none; border: 1px solid #ccc; padding: 2px 10px; border-radius: 4px; }
+        .back-arrow-btn { font-size: 18px; font-weight: bold; color: #222; cursor: pointer; text-decoration: none; border: 1px solid #ccc; padding: 2px 8px; border-radius: 4px; }
+        .header-right-nav { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+        .header-right-nav a { color: #555; text-decoration: none; font-weight: 500; }
+        .header-right-nav a:hover { color: #000; text-decoration: underline; }
+        .header-right-nav .admin-btn { color: #2563eb; font-weight: 700; }
+        .nav-divider { color: #ccc; font-size: 12px; }
         .section-title { font-size: 15px; font-weight: bold; margin: 20px 0 10px 0; color: #222; border-left: 4px solid #222; padding-left: 8px; }
         .form-group { margin-bottom: 12px; }
         .form-group label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 4px; color: #444; }
@@ -29,8 +34,16 @@
         <div class="header-left">
             <a href="index.html" class="brand-logo">GACHU</a>
             <a href="index.html" class="back-arrow-btn" title="쇼핑몰로 돌아가기">←</a>
+            <h2 style="color:#222; font-size:18px; margin:0; font-weight:bold;">주문 / 결제</h2>
         </div>
-        <h2 style="color:#222; font-size:20px;">주문 / 결제</h2>
+        <!-- 우측 네비게이션: 로그아웃 | 관리자 | 마이페이지 -->
+        <div class="header-right-nav">
+            <a href="index.html" onclick="sessionStorage.clear(); localStorage.removeItem('gachuUser');">로그아웃</a>
+            <span class="nav-divider">|</span>
+            <a href="admin.html" class="admin-btn">관리자</a>
+            <span class="nav-divider">|</span>
+            <a href="mypage.html">마이페이지</a>
+        </div>
     </div>
 
     <!-- 주문 상품 요약 -->
@@ -114,7 +127,6 @@
         });
         localStorage.setItem("gachuOrders", JSON.stringify(history));
 
-        // GitHub Pages (/gachu/) 및 로컬 환경 모두 지원하는 동적 주소 생성 (404 방지)
         const currentDir = window.location.href.substring(0, window.location.href.lastIndexOf('/'));
         const successUrl = `${currentDir}/mypage.html`;
         const failUrl = window.location.href;
